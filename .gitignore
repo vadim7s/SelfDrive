@@ -1,2 +1,7 @@
 _out_ang/*
 out_sem/*
+lane_model*
+tutorial/.ipynb_checkpoints/*
+*.png
+*.jpg
+*.mp4
