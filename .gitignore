@@ -5,3 +5,6 @@ tutorial/.ipynb_checkpoints/*
 *.png
 *.jpg
 *.mp4
+Semantic segmentation/model/*
+Semantic segmentation/.ipynb_checkpoints/*
+utils and building blocks/.ipynb_checkpoints/*
