@@ -9,3 +9,8 @@ Semantic segmentation/model/*
 Semantic segmentation/.ipynb_checkpoints/*
 utils and building blocks/.ipynb_checkpoints/*
 Tutorials/.ipynb_checkpoints/tutorial_4_simple_navigation-checkpoint.ipynb
+GPS with Vision/.ipynb_checkpoints/step 2 train model on images-checkpoint.ipynb
+GPS with Vision/GPS_Visual_Model_overfit/keras_metadata.pb
+GPS with Vision/GPS_Visual_Model_overfit/saved_model.pb
+GPS with Vision/GPS_Visual_Model_overfit/variables/variables.data-00000-of-00001
+GPS with Vision/GPS_Visual_Model_overfit/variables/variables.index
