@@ -14,3 +14,11 @@ GPS with Vision/GPS_Visual_Model_overfit/keras_metadata.pb
 GPS with Vision/GPS_Visual_Model_overfit/saved_model.pb
 GPS with Vision/GPS_Visual_Model_overfit/variables/variables.data-00000-of-00001
 GPS with Vision/GPS_Visual_Model_overfit/variables/variables.index
+GPS with Vision/GPS_Visual_Model_Spin/keras_metadata.pb
+GPS with Vision/GPS_Visual_Model_Spin/saved_model.pb
+GPS with Vision/GPS_Visual_Model_Spin/variables/variables.data-00000-of-00001
+GPS with Vision/GPS_Visual_Model_Spin/variables/variables.index
+GPS with Vision/GPS_Visual_Model_SpinV2/keras_metadata.pb
+GPS with Vision/GPS_Visual_Model_SpinV2/saved_model.pb
+GPS with Vision/GPS_Visual_Model_SpinV2/variables/variables.data-00000-of-00001
+GPS with Vision/GPS_Visual_Model_SpinV2/variables/variables.index
