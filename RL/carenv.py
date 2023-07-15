@@ -42,6 +42,7 @@ class CarEnv(gym.Env):
         # They must be gym.spaces objects
         # Example when using continous actions:
 		# self.action_space = spaces.Box(low=-1, high=1,shape=(2,),dtype=np.uint8)
+		# now we use descrete actions
 		self.action_space = spaces.MultiDiscrete([9,4])
         # First discrete variable with 9 possible actions for steering with middle being straight
         # Second discrete variable with 4 possible actions for throttle/braking
@@ -101,14 +102,9 @@ class CarEnv(gym.Env):
 		else:
 			self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer=steer, brake = 0.0))
 
+		# optional - print steer and throttle every 50 steps
 		if self.step_counter % 50 == 0:
 			print('steer input from model:',steer,', throttle: ',throttle)
-		# if throttle>=0:
-		# 	self.vehicle.apply_control(carla.VehicleControl(throttle=1.0*throttle, steer=self.STEER_AMT*steer))
-		# else:
-		# 	self.vehicle.apply_control(carla.VehicleControl(throttle=0, steer=self.STEER_AMT*steer, brake=-1.0*throttle))
-		
-		#self.world.tick()
 		
 		v = self.vehicle.get_velocity()
 		kmh = int(3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
@@ -122,7 +118,7 @@ class CarEnv(gym.Env):
 			cv2.imshow('Sem Camera', cam)
 			cv2.waitKey(1)
 
-		# track steering lock duration
+		# track steering lock duration to prevent "chasing its tail"
 		lock_duration = 0
 		if self.steering_lock == False:
 			if steer<-0.6 or steer>0.6:
@@ -132,6 +128,7 @@ class CarEnv(gym.Env):
 			if steer<-0.6 or steer>0.6:
 				lock_duration = time.time() - self.steering_lock_start
 		
+		# start defining reward from each step
 		reward = 0
 		done = False
 		#punish for collision
@@ -151,6 +148,8 @@ class CarEnv(gym.Env):
 			reward = reward - 10
 		elif kmh <15:
 			reward = reward -3
+		elif kmh>40:
+			reward = reward - 20 #punish for going to fast
 		else:
 			reward = reward +2
 		# reward for making distance
