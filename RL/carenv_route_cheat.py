@@ -1,10 +1,15 @@
 '''
-building new env:
+this enviroment goes off the one with just fron camera,
+but adds an angle to the next waypoint - the car follows a route
 
-Steering - continous - done
-Acceleration - smooth continous
-Clean up at completion of episode
-Navigation - define a goal to travel a short distance
+The idea is to see how quickly the RL model will find 
+to follow the angle and ignore the image data 
+
+Note this is just an interim step to get our confidence
+in the RL approach
+
+After that we need to make the direction angle a lot further out from the car
+so the car would have to learn from images not cut through corners
 
 '''
 
@@ -16,7 +21,9 @@ import cv2
 import gym
 from gym import spaces
 import carla
-
+import sys
+sys.path.append('C:/CARLA_0.9.13/PythonAPI/carla') # tweak to where you put carla
+from agents.navigation.global_route_planner import GlobalRoutePlanner
 SECONDS_PER_EPISODE = 25
 
 N_CHANNELS = 3
@@ -40,15 +47,18 @@ class CarEnv(gym.Env):
 		super(CarEnv, self).__init__()
         # Define action and observation space
         # They must be gym.spaces objects
-        # Example when using continous actions:
-		# self.action_space = spaces.Box(low=-1, high=1,shape=(2,),dtype=np.uint8)
+
 		self.action_space = spaces.MultiDiscrete([9,4])
         # First discrete variable with 9 possible actions for steering with middle being straight
         # Second discrete variable with 4 possible actions for throttle/braking
 
         # Example for using image as input normalised to 0..1 (channel-first; channel-last also works):
-		self.observation_space = spaces.Box(low=0.0, high=1.0,
-                                            shape=(HEIGHT, WIDTH, N_CHANNELS), dtype=np.float32)
+		# adding a separate input of an angle to a close waypoint along the route
+		self.observation_space = spaces.Dict({
+            'image': spaces.Box(low=0.0, high=1.0,shape=(HEIGHT, WIDTH, N_CHANNELS), dtype=np.float32),
+            'float_input': spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
+        })
+
 		self.client = carla.Client("localhost", 2000)
 		self.client.set_timeout(4.0)
 		self.world = self.client.get_world()
@@ -60,7 +70,75 @@ class CarEnv(gym.Env):
 		self.world.apply_settings(self.settings)
 		self.blueprint_library = self.world.get_blueprint_library()
 		self.model_3 = self.blueprint_library.filter("model3")[0]
+		self.route = None
 	
+	def select_random_route(self):
+		'''
+		retruns a random route for the car/veh
+		out of the list of possible locations locs
+		where distance is longer than 100 waypoints
+		'''    
+		point_a = self.vehicle.get_transform().location #we start at where the car is or last waypoint
+		sampling_resolution = 1
+		grp = GlobalRoutePlanner(self.world.get_map(), sampling_resolution)
+		# now let' pick the longest possible route
+		min_distance = 100
+		result_route = None
+		route_list = []
+		for loc in self.world.get_map().get_spawn_points(): # we start trying all spawn points 
+															#but we just exclude first at zero index
+			cur_route = grp.trace_route(point_a, loc.location)
+			if len(cur_route) > min_distance:
+				route_list.append(cur_route)
+		result_route = random.choice(route_list)
+		return result_route
+
+	def get_closest_wp_forward(self):
+		'''
+		this function is to find the closest point looking forward
+		if there in no points behind, then we get first available
+		'''
+
+		# first we create a list of angles and distances to each waypoint
+		# yeah - maybe a bit wastefull
+		points_ahead = []
+		points_behind = []
+		for i, wp in enumerate(self.route):
+			#get angle
+			vehicle_transform = self.vehicle.get_transform()
+			wp_transform = wp[0].transform
+			distance = ((wp_transform.location.y - vehicle_transform.location.y)**2 + (wp_transform.location.x - vehicle_transform.location.x)**2)**0.5
+			angle = math.degrees(math.atan2(wp_transform.location.y - vehicle_transform.location.y,
+								wp_transform.location.x - vehicle_transform.location.x)) -  vehicle_transform.rotation.yaw
+			if angle>360:
+				angle = angle - 360
+			elif angle <-360:
+				angle = angle + 360
+
+			if angle>180:
+				angle = -360 + angle
+			elif angle <-180:
+				angle = 360 - angle 
+			if abs(angle)<=90:
+				points_ahead.append([i,distance,angle])
+			else:
+				points_behind.append([i,distance,angle])
+		# now we pick a point we need to get angle to 
+		if len(points_ahead)==0:
+			closest = min(points_behind, key=lambda x: x[1])
+			if closest[2]>0:
+				closest = [closest[0],closest[1],90]
+			else:
+				closest = [closest[0],closest[1],-90] 
+		else:
+			closest = min(points_ahead, key=lambda x: x[1])
+			# move forward if too close
+			for i, point in enumerate(points_ahead):
+				if point[1]>=10 and point[1]<20:
+					closest = point
+					break
+			return closest[2]/90.0, closest[1] # we convert angle to [-1 to +1] and also return distance
+			
 	def cleanup(self):
 		for sensor in self.world.get_actors().filter('*sensor*'):
 			sensor.destroy()
@@ -114,7 +192,10 @@ class CarEnv(gym.Env):
 		kmh = int(3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
 		
 		distance_travelled = self.initial_location.distance(self.vehicle.get_location())
-
+		step_distance_gain = 0
+		if self.distance_travelled_last < distance_travelled:
+			step_distance_gain = distance_travelled - self.distance_travelled_last
+			self.distance_travelled_last < distance_travelled
 		# storing camera to return at the end in case the clean-up function destroys it
 		cam = self.front_camera
 		# showing image
@@ -131,7 +212,17 @@ class CarEnv(gym.Env):
 		else:
 			if steer<-0.6 or steer>0.6:
 				lock_duration = time.time() - self.steering_lock_start
+		# get angle and distance to the navigation route
 		
+		angle, distance = None, None
+		while angle is None:
+			try:
+				# connect
+				angle, distance = self.get_closest_wp_forward()
+			except:
+				pass
+			
+		#print('angle ',angle,' distance',distance)
 		reward = 0
 		done = False
 		#punish for collision
@@ -147,24 +238,26 @@ class CarEnv(gym.Env):
 		elif lock_duration > 1:
 			reward = reward - 50
 		#reward for acceleration
-		if kmh < 10:
-			reward = reward - 10
-		elif kmh <15:
-			reward = reward -3
-		else:
-			reward = reward +2
+		# if kmh < 10:
+		# 	reward = reward - 10
+		# elif kmh <15:
+		# 	reward = reward -3
+		# else:
+		# 	reward = reward +2
+		
+		# punish for deviating from the route
+		route_loss =  distance - self.last_distance_to_route 
+		if route_loss > 0.5:
+			reward = reward - 1
+		if distance > 20:
+			reward = reward - 1
 		# reward for making distance
-		if distance_travelled<50:
-			reward = reward - 10
-		elif distance_travelled<100:
-			reward = 1
-		else:
-			reward = reward + 3
+		reward = reward + int(round(step_distance_gain*3,0))
 		# check for episode duration
 		if self.episode_start + SECONDS_PER_EPISODE < time.time():
 			done = True
 			self.cleanup()
-		return cam/255.0, reward, done, {}	#curly brackets - empty dictionary required by SB3 format
+		return  {'image': self.front_camera/255.0, 'float_input': angle}, reward, done, {}	#curly brackets - empty dictionary required by SB3 format
 
 	def reset(self):
 		self.collision_hist = []
@@ -211,8 +304,11 @@ class CarEnv(gym.Env):
 		self.steering_lock_start = None # this is to count time in steering lock and start penalising for long time in steering lock
 		self.step_counter = 0
 		self.vehicle.apply_control(carla.VehicleControl(throttle=0.0, brake=0.0))
-
-		return self.front_camera/255.0
+		self.distance_travelled_last = 0
+		self.route = self.select_random_route()
+		angle, distance_to_route = self.get_closest_wp_forward()
+		self.last_distance_to_route = distance_to_route
+		return  {'image': self.front_camera/255.0, 'float_input': angle}
 
 	def process_img(self, image):
 		image.convert(carla.ColorConverter.CityScapesPalette)

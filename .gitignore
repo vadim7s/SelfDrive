@@ -22,3 +22,6 @@ GPS with Vision/GPS_Visual_Model_SpinV2/keras_metadata.pb
 GPS with Vision/GPS_Visual_Model_SpinV2/saved_model.pb
 GPS with Vision/GPS_Visual_Model_SpinV2/variables/variables.data-00000-of-00001
 GPS with Vision/GPS_Visual_Model_SpinV2/variables/variables.index
+events.out*
+*.zip
+*_pycache_*

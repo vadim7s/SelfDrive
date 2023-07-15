@@ -1,6 +1,7 @@
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO #PPO
+from typing import Callable
 import os
-from carenv1 import CarEnv
+from carenv_route_cheat import CarEnv
 import time
 
 
@@ -22,13 +23,13 @@ env = CarEnv()
 
 env.reset()
 print('Env has been reset as part of launch')
-model = PPO('MlpPolicy', env, verbose=1, tensorboard_log=logdir)
+model = PPO('MultiInputPolicy', env, verbose=1,learning_rate=0.001, tensorboard_log=logdir)
 
-TIMESTEPS = 10000
+TIMESTEPS = 500_000 # how long is each training iteration - individual steps
 iters = 0
-while True:
+while iters<3:  # how many training iterations you want
 	iters += 1
 	print('Iteration ', iters,' is to commence...')
-	model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name=f"PPO")
+	model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name=f"PPO" )
 	print('Iteration ', iters,' has been trained')
 	model.save(f"{models_dir}/{TIMESTEPS*iters}")
