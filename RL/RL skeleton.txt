@@ -1,0 +1,33 @@
+import ...
+
+# define class for environment
+class CarEnv(gym.Env):
+	CLASS costants
+	
+	def __init__(self):
+		super(CarEnv, self).__init__()
+        # Define action and observation space
+        self.action_space = ...
+        # First discrete variable with 9 possible actions for steering with middle being straight
+        # Second discrete variable with 4 possible actions for throttle/braking
+
+        # Define observation:
+		self.observation_space = ...
+		
+        # connect to sim, spawn a car ....
+        self.client = carla.Client("localhost", 2000)
+		self.client.set_timeout(4.0)
+			
+	def step(self, action):
+		# process latest from this step
+		
+		reward = 0
+		done = False
+		# define reward
+        # if found episode end (collision), done = True and cleanup
+
+		return observation(camera), reward, done, {}	#curly brackets - empty dictionary required by SB3 format
+
+	def reset(self):
+        # spawn a car, attach sensors etc
+		return observation(camera)

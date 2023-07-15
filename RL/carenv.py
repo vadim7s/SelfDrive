@@ -156,7 +156,7 @@ class CarEnv(gym.Env):
 		if distance_travelled<50:
 			reward = reward - 10
 		elif distance_travelled<100:
-			reward = 1
+			reward = reward + 1
 		else:
 			reward = reward + 3
 		# check for episode duration
