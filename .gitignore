@@ -25,3 +25,6 @@ GPS with Vision/GPS_Visual_Model_SpinV2/variables/variables.index
 events.out*
 *.zip
 *_pycache_*
+cache/*
+*.xodr
+*.osm
