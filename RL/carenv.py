@@ -134,31 +134,31 @@ class CarEnv(gym.Env):
 		#punish for collision
 		if len(self.collision_hist) != 0:
 			done = True
-			reward = reward-200
+			reward = reward - 300
 			self.cleanup()
 		# punish for steer lock up
 		if lock_duration>3:
-			reward = reward - 200
+			reward = reward - 150
 			done = True
 			self.cleanup()
 		elif lock_duration > 1:
-			reward = reward - 50
+			reward = reward - 20
 		#reward for acceleration
 		if kmh < 10:
-			reward = reward - 10
+			reward = reward - 3
 		elif kmh <15:
-			reward = reward -3
+			reward = reward -1
 		elif kmh>40:
-			reward = reward - 20 #punish for going to fast
+			reward = reward - 10 #punish for going to fast
 		else:
-			reward = reward +2
-		# reward for making distance
-		if distance_travelled<50:
-			reward = reward - 10
-		elif distance_travelled<100:
 			reward = reward + 1
+		# reward for making distance
+		if distance_travelled<30:
+			reward = reward - 1
+		elif distance_travelled<50:
+			reward =  reward + 1
 		else:
-			reward = reward + 3
+			reward = reward + 2
 		# check for episode duration
 		if self.episode_start + SECONDS_PER_EPISODE < time.time():
 			done = True
