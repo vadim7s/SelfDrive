@@ -155,6 +155,8 @@ CAM_WIDTH = 640
 
 # map capture images
 MAP_FOLDER = 'Map Projection/map_img/'
+IMG_FOLDER = 'Map Projection/img/'
+
 MAP_CAPTURE_CROP_FACTOR = 2.0 # by what factor we crop height and width of a map to save an image of it  
 
 # Colors
@@ -1209,7 +1211,7 @@ class World(object):
     def tick(self, clock):
         """Retrieves the actors for Hero and Map modes and updates de HUD based on that"""
         actors = self.world.get_actors()
-
+        self.hud.time_grab = time.time_ns()
         # We store the transforms also so that we avoid having transforms of
         # previous tick and current tick when rendering them.
         self.actors_with_transforms = [(actor, actor.get_transform()) for actor in actors]
@@ -1292,7 +1294,7 @@ class World(object):
             display.blit(self.border_round_surface, (0, 0))
             self.hud.render(display)
         if self.map_capture:
-                    time_grab = time.time_ns()
+                    #time_grab = time.time_ns()
                     # get sub-surface - smaller section of the image
                     _width = rotated_result_surface.get_width()
                     _height = rotated_result_surface.get_height()
@@ -1302,7 +1304,7 @@ class World(object):
                     _new_height_start = math.floor(_height / 2) - math.floor(_new_height / 2)
                     slice_rect = pygame.Rect(_new_width_start, _new_height_start, _new_width, _new_height)
                     map_to_save = rotated_result_surface.subsurface(slice_rect)
-                    pygame.image.save(map_to_save, MAP_FOLDER+'%06d.png' % time_grab)
+                    pygame.image.save(map_to_save, MAP_FOLDER+'%06d.png' % self.hud.time_grab)
 
     def destroy_sensors(self):
         self.camera_manager.sensor.destroy()
@@ -1599,6 +1601,7 @@ class HUD(object):
         self._show_info = True
         self._info_text = []
         self._server_clock = pygame.time.Clock()
+        self.time_grab = None
 
     def on_world_tick(self, timestamp):
         self._server_clock.tick()
@@ -2123,9 +2126,8 @@ class CameraManager(object):
             array = array[:, :, ::-1]
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
         if self.recording:
-            image.save_to_disk('_out/%08d' % image.frame)
-
-
+            image.save_to_disk(IMG_FOLDER+'%08d' % self.hud.time_grab)
+            
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------------
 # ==============================================================================
@@ -2188,7 +2190,7 @@ def game_loop(args):
             world.tick(clock)
             # overwriting 2nd sensor with map view: when you choose 2 sensor - map view overwrites it
             world.render(display)
-            world.map_render(display)
+            world.map_render(display) # this only goes over main display when second sensor is selected
             pygame.display.flip()
 
     finally:
