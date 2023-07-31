@@ -1284,12 +1284,13 @@ class World(object):
 
         rotated_result_surface = pygame.transform.rotozoom(self.hero_surface, angle, 0.9).convert()
 
-        center = (display.get_width() / 2, display.get_height() / 2)
-        rotation_pivot = rotated_result_surface.get_rect(center=center)
-        display.blit(rotated_result_surface, rotation_pivot)
+        if self.camera_manager.index==1:
+            center = (display.get_width() / 2, display.get_height() / 2)
+            rotation_pivot = rotated_result_surface.get_rect(center=center)
+            display.blit(rotated_result_surface, rotation_pivot)
 
-        display.blit(self.border_round_surface, (0, 0))
-        self.hud.render(display)
+            display.blit(self.border_round_surface, (0, 0))
+            self.hud.render(display)
         if self.map_capture:
                     time_grab = time.time_ns()
                     # get sub-surface - smaller section of the image
@@ -2186,11 +2187,8 @@ def game_loop(args):
                 return
             world.tick(clock)
             # overwriting 2nd sensor with map view: when you choose 2 sensor - map view overwrites it
-            if world.camera_manager.index==1:
-                world.map_render(display)
-            else:
-                world.render(display)
-           
+            world.render(display)
+            world.map_render(display)
             pygame.display.flip()
 
     finally:
