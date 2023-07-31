@@ -1,9 +1,12 @@
 # Objectives: 
-# - Add map to manual_control Example but incorporating the map into main world object
+# - Add map to manual_control Example but incorporating the map into main world object - Done
+# - enable capturing map and camera images at the same time - Done 
+#       (but 9 times less camera images captured than map images)
+
+# - Do not cut images at zero speed - saving time
 # - Modify car controls to route following
-#
-# Outcome:
-#
+# - overlay map onto display
+
 
 """
 Welcome to CARLA manual control.
