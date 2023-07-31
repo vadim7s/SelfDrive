@@ -2,8 +2,8 @@
 # - Add map to manual_control Example but incorporating the map into main world object - Done
 # - enable capturing map and camera images at the same time - Done 
 #       (but 9 times less camera images captured than map images)
+# - Do not cut images at zero speed - saving time - Done
 
-# - Do not cut images at zero speed - saving time
 # - Modify car controls to route following
 # - overlay map onto display
 
@@ -1653,9 +1653,7 @@ class HUD(object):
                 ('Steer:', c.steer, -1.0, 1.0),
                 ('Brake:', c.brake, 0.0, 1.0),
                 ('Reverse:', c.reverse),
-                ('Hand brake:', c.hand_brake),
-                ('Manual:', c.manual_gear_shift),
-                'Gear:        %s' % {-1: 'R', 0: 'N'}.get(c.gear, c.gear)]
+                ('Hand brake:', c.hand_brake)]
         elif isinstance(c, carla.WalkerControl):
             self._info_text += [
                 ('Speed:', c.speed, 0.0, 5.556),
@@ -2168,11 +2166,6 @@ def game_loop(args):
             (args.width, args.height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
-        #second display for map - does not work, it overwrites the first one
-        # map_display = pygame.display.set_mode(
-        #     (args.width, args.height),
-        #     pygame.HWSURFACE | pygame.DOUBLEBUF)
-        
         display.fill((0,0,0))
         pygame.display.flip()
 
