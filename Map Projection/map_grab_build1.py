@@ -1296,7 +1296,7 @@ class World(object):
 
             display.blit(self.border_round_surface, (0, 0))
             self.hud.render(display)
-        if self.map_capture:
+        if self.map_capture and self.hud.speed>0.1:
                     #time_grab = time.time_ns()
                     # get sub-surface - smaller section of the image
                     _width = rotated_result_surface.get_width()
@@ -1605,6 +1605,7 @@ class HUD(object):
         self._info_text = []
         self._server_clock = pygame.time.Clock()
         self.time_grab = None
+        self.speed = None
 
     def on_world_tick(self, timestamp):
         self._server_clock.tick()
@@ -1618,6 +1619,7 @@ class HUD(object):
             return
         t = world.player.get_transform()
         v = world.player.get_velocity()
+        self.speed = 3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)
         c = world.player.get_control()
         compass = world.imu_sensor.compass
         heading = 'N' if compass > 270.5 or compass < 89.5 else ''
@@ -1637,7 +1639,7 @@ class HUD(object):
             'Map:     % 20s' % world.map.name.split('/')[-1],
             'Simulation time: % 12s' % datetime.timedelta(seconds=int(self.simulation_time)),
             '',
-            'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)),
+            'Speed:   % 15.0f km/h' % (self.speed),
             u'Compass:% 17.0f\N{DEGREE SIGN} % 2s' % (compass, heading),
             'Accelero: (%5.1f,%5.1f,%5.1f)' % (world.imu_sensor.accelerometer),
             'Gyroscop: (%5.1f,%5.1f,%5.1f)' % (world.imu_sensor.gyroscope),
@@ -2128,7 +2130,7 @@ class CameraManager(object):
             array = array[:, :, :3]
             array = array[:, :, ::-1]
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-        if self.recording:
+        if self.recording and self.hud.speed>0.1:
             image.save_to_disk(IMG_FOLDER+'%08d' % self.hud.time_grab)
             
 # ==============================================================================
@@ -2237,6 +2239,7 @@ def main():
     argparser.add_argument(
         '-a', '--autopilot',
         action='store_true',
+        default= True,
         help='enable autopilot')
     argparser.add_argument(
         '--res',
