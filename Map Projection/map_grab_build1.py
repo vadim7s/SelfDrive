@@ -4,7 +4,9 @@
 #       (but 9 times less camera images captured than map images)
 # - Do not cut images at zero speed - saving time - Done
 
+# - simplify map image drawings to make predicting the map easier for drivable surface
 # - Modify car controls to route following
+# - add route trajectory on the map
 # - overlay map onto display
 
 
@@ -160,7 +162,7 @@ CAM_WIDTH = 640
 MAP_FOLDER = 'Map Projection/map_img/'
 IMG_FOLDER = 'Map Projection/img/'
 
-MAP_CAPTURE_CROP_FACTOR = 2.0 # by what factor we crop height and width of a map to save an image of it  
+MAP_CAPTURE_CROP_FACTOR = 1.5 # by what factor we crop height and width of a map to save an image of it  
 
 # Colors
 
