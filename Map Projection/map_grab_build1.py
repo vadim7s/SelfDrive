@@ -2147,8 +2147,9 @@ def game_loop(args):
     try:
         client = carla.Client(args.host, args.port)
         client.set_timeout(20.0)
+        sim_world = client.load_world(args.map) 
 
-        sim_world = client.get_world()
+        #sim_world = client.get_world()
         if args.sync:
             original_settings = sim_world.get_settings()
             settings = sim_world.get_settings()
@@ -2277,6 +2278,11 @@ def main():
         '--sync',
         action='store_true',
         help='Activate synchronous mode execution')
+    argparser.add_argument(
+        '--map',
+        metavar='TOWN',
+        default='Town03',
+        help='start a new episode at the given TOWN')
     argparser.add_argument(
         '--clear',
         action='store_true',
