@@ -2281,7 +2281,7 @@ def main():
     argparser.add_argument(
         '--map',
         metavar='TOWN',
-        default='Town03',
+        default='Town05',
         help='start a new episode at the given TOWN')
     argparser.add_argument(
         '--clear',

@@ -1,9 +1,14 @@
 '''
+this gets stuck possibly due to the navigational part
+(from here - will try without navigation element)
+
 this enviroment goes off the one with just front camera,
 but adds an angle to the next waypoint - the car follows a route
 
 The idea is to see how quickly the RL model will find 
 to follow the angle and ignore the image data 
+
+Also the car is driving at constant speed so throttle is not included
 
 Note this is just an interim step to get our confidence
 in the RL approach
@@ -42,13 +47,15 @@ class CarEnv(gym.Env):
 	front_camera = None
 	CAMERA_POS_Z = 1.3 
 	CAMERA_POS_X = 1.4
+	PREFERRED_SPEED = 20 # what it says
+	SPEED_THRESHOLD = 2 #defines when we get close to desired speed so we drop the
 	
 	def __init__(self):
 		super(CarEnv, self).__init__()
         # Define action and observation space
         # They must be gym.spaces objects
 
-		self.action_space = spaces.MultiDiscrete([9,4])
+		self.action_space = spaces.MultiDiscrete([9])
         # First discrete variable with 9 possible actions for steering with middle being straight
         # Second discrete variable with 4 possible actions for throttle/braking
 
@@ -145,11 +152,23 @@ class CarEnv(gym.Env):
 		for actor in self.world.get_actors().filter('*vehicle*'):
 			actor.destroy()
 		cv2.destroyAllWindows()
-
+	
+	def maintain_speed(self,s):
+			''' 
+			this is a very simple function to maintan desired speed
+			s arg is actual current speed
+			'''
+			if s >= self.PREFERRED_SPEED:
+				return 0
+			elif s < self.PREFERRED_SPEED - self.SPEED_THRESHOLD:
+				return 0.7 # think of it as % of "full gas"
+			else:
+				return 0.3 # tweak this if the car is way over or under preferred speed 
+	
 	def step(self, action):
 		self.step_counter +=1
 		steer = action[0]
-		throttle = action[1]
+		
 		# map steering actions
 		if steer ==0:
 			steer = - 0.9
@@ -169,27 +188,18 @@ class CarEnv(gym.Env):
 			steer = 0.25
 		elif steer ==8:
 			steer = 0.9
-		# map throttle and apply steer and throttle	
-		if throttle == 0:
-			self.vehicle.apply_control(carla.VehicleControl(throttle=0.0, steer=steer, brake = 1.0))
-		elif throttle == 1:
-			self.vehicle.apply_control(carla.VehicleControl(throttle=0.3, steer=steer, brake = 0.0))
-		elif throttle == 2:
-			self.vehicle.apply_control(carla.VehicleControl(throttle=0.7, steer=steer, brake = 0.0))
-		else:
-			self.vehicle.apply_control(carla.VehicleControl(throttle=1.0, steer=steer, brake = 0.0))
-
+		# map throttle to maintain speed and apply steer and throttle	
+		v = self.vehicle.get_velocity()
+		kmh = int(3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
+		estimated_throttle = self.maintain_speed(kmh)
+		self.vehicle.apply_control(carla.VehicleControl(throttle=estimated_throttle, steer=steer, brake = 0.0))
+		
 		if self.step_counter % 50 == 0:
-			print('steer input from model:',steer,', throttle: ',throttle)
-		# if throttle>=0:
-		# 	self.vehicle.apply_control(carla.VehicleControl(throttle=1.0*throttle, steer=self.STEER_AMT*steer))
-		# else:
-		# 	self.vehicle.apply_control(carla.VehicleControl(throttle=0, steer=self.STEER_AMT*steer, brake=-1.0*throttle))
+			print('steer input from model:',steer)
 		
 		#self.world.tick()
 		
-		v = self.vehicle.get_velocity()
-		kmh = int(3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
+
 		
 		distance_travelled = self.initial_location.distance(self.vehicle.get_location())
 		step_distance_gain = 0
@@ -232,25 +242,22 @@ class CarEnv(gym.Env):
 			self.cleanup()
 		# punish for steer lock up
 		if lock_duration>3:
-			reward = reward - 200
+			reward = reward - 100
 			done = True
 			self.cleanup()
 		elif lock_duration > 1:
 			reward = reward - 50
-		#reward for acceleration
-		# if kmh < 10:
-		# 	reward = reward - 10
-		# elif kmh <15:
-		# 	reward = reward -3
-		# else:
-		# 	reward = reward +2
-		
+			
 		# punish for deviating from the route
 		route_loss =  distance - self.last_distance_to_route 
-		if route_loss > 0.5:
-			reward = reward - 1
+		if route_loss<-0.1:
+			reward = reward + 10 #reward for getting closer to the route
+		elif route_loss < 0.1:
+			reward = reward + 1
+		else:
+			reward = reward - 2
 		if distance > 20:
-			reward = reward - 1
+			reward = reward - 100
 		# reward for making distance
 		reward = reward + int(round(step_distance_gain*3,0))
 		# check for episode duration
