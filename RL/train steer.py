@@ -10,7 +10,7 @@ The model has not learned to follow the lane when it curves or turns or ends
 Also according to chat GPT, SB3 does not contain CNN layers in the way it does RL
 so it is hard to expect it to perform well in computer vision
 
-Where from here: need to add a pre-processing step on the camera vision
+Where from here: this version added a pre-processing step on the camera vision
 to apply another model to do CNN and get a more condensed array to pass into RL
 Also picking towns or spawn points with more curvy lanes would help to make RL
 learn to follow the lane 
@@ -38,7 +38,7 @@ model_to_save.save('model_saved_from_desired_layer.h5')
 from stable_baselines3 import PPO #PPO
 from typing import Callable
 import os
-from carenv_steer_only import CarEnv
+from carenv_steer_only_cnn import CarEnv
 import time
 
 
