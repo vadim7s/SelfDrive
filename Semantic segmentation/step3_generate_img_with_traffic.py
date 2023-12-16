@@ -11,8 +11,7 @@ The end purpose of this is to train a vision model using output images
 so the model could be tested on real Tesla footage and would generate
 a mask to show drivable surfave in front of the car
 
-This version of code generate images in an empty town
-There is another one with traffic
+This version of code generate images with traffic
 
 It is recommended to re-start the simulator each time you run this
 
