@@ -37,7 +37,7 @@ model = PPO('MlpPolicy', env, verbose=1,learning_rate=0.001, tensorboard_log=log
 
 TIMESTEPS = 500_000 # how long is each training iteration - individual steps
 iters = 0
-while iters<2:  # how many training iterations you want
+while iters<1:  # how many training iterations you want
 	iters += 1
 	print('Iteration ', iters,' is to commence...')
 	model.learn(total_timesteps=TIMESTEPS, reset_num_timesteps=False, tb_log_name=f"PPO" )

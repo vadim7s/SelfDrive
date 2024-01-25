@@ -1,11 +1,9 @@
 '''
-this is second version of env:
-this tests if steering and throttle can be learned at same time
-First Outcome: it can - success
-Next Improvement: slow speed is only punished at the start of episode
-but it needs to be based on average speed over past X timesteps
+this is third version of env:
 
-making changes to reward for average speed
+adding speed to observation space so it becomes easier to throttle
+
+Outcome - fail - Tuple observation space is not supported by any SB3 algs
 '''
 
 import random
@@ -63,12 +61,15 @@ class CarEnv(gym.Env):
 		self.new_width = self.width_to - self.width_from
 		self.image_for_CNN = None
         # Example for using image as input normalised to 0..1 (channel-first; channel-last also works):
-		self.observation_space = spaces.Box(low=0.0, high=1.0,
+		image_space = spaces.Box(low=0.0, high=1.0,
                                             shape=(7, 18, 8), dtype=np.float32)
+		# second dimenson to pass current speed
+		number_space = spaces.Box(low=0,high=200,shape = (1,), dtype=np.int32)
+		self.observation_space	= spaces.Tuple((image_space,number_space))
 		self.client = carla.Client("localhost", 2000)
-		self.client.set_timeout(40.0)
+		self.client.set_timeout(4.0)
 		self.world = self.client.get_world()
-		self.client.load_world('Town05')
+		##self.client.load_world('Town04')
 
 		self.settings = self.world.get_settings()
 		self.settings.no_rendering_mode = True
@@ -220,7 +221,7 @@ class CarEnv(gym.Env):
 			done = True
 			self.cleanup()
 		self.image_for_CNN = self.apply_cnn(self.front_camera[self.height_from:,self.width_from:self.width_to])
-		return self.image_for_CNN, reward, done, {}	#curly brackets - empty dictionary required by SB3 format
+		return (self.image_for_CNN,kmh), reward, done, {}	#curly brackets - empty dictionary required by SB3 format
 
 	def reset(self):
 		self.collision_hist = []

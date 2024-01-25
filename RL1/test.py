@@ -3,13 +3,13 @@ from stable_baselines3 import PPO
 from environment import CarEnv
 
 #update here
-models_dir = "C:\\SelfDrive\\models\\1705357424"
+models_dir = "C:\\SelfDrive\\models\\1705442732"
 
 env = CarEnv()
 env.reset()
 
 #and update here
-model_path = f"{models_dir}/1000000.zip"
+model_path = f"{models_dir}\\500000.zip"
 model = PPO.load(model_path, env=env)
 
 episodes = 5
