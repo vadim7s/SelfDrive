@@ -7,8 +7,8 @@ import time
 import numpy as np
 import math 
 import cv2
-import gym
-from gym import spaces
+import gymnasium
+from gymnasium import spaces
 import carla
 from tensorflow.keras.models import load_model
 
@@ -23,10 +23,11 @@ SPIN = 10 #angle of random spin
 HEIGHT_REQUIRED_PORTION = 0.5 #bottom share, e.g. 0.1 is take lowest 10% of rows
 WIDTH_REQUIRED_PORTION = 0.9
 
+SHOW_PREVIEW = False
 
-SHOW_PREVIEW = True
+SEED = 123
 
-class CarEnv(gym.Env):
+class CarEnv(gymnasium.Env):
 	SHOW_CAM = SHOW_PREVIEW
 	STEER_AMT = 1.0
 	im_width = WIDTH
@@ -36,6 +37,7 @@ class CarEnv(gym.Env):
 	CAMERA_POS_X = 1.4
 	PREFERRED_SPEED = 30 # what it says
 	SPEED_THRESHOLD = 2 #defines when we get close to desired speed so we drop the
+	
 	
 	def __init__(self):
 		super(CarEnv, self).__init__()
@@ -196,9 +198,9 @@ class CarEnv(gym.Env):
 			self.cleanup()
 		self.image_for_CNN = self.apply_cnn(self.front_camera[self.height_from:,self.width_from:self.width_to])
 
-		return self.image_for_CNN, reward, done, {}	#curly brackets - empty dictionary required by SB3 format
+		return self.image_for_CNN, reward, done, done,{}	#curly brackets - empty dictionary required by SB3 format
 
-	def reset(self):
+	def reset(self, seed=SEED):
 		self.collision_hist = []
 		self.lane_invade_hist = []
 		self.actor_list = []
@@ -255,7 +257,7 @@ class CarEnv(gym.Env):
 		self.step_counter = 0
 		self.vehicle.apply_control(carla.VehicleControl(throttle=0.0, brake=0.0))
 		self.image_for_CNN = self.apply_cnn(self.front_camera[self.height_from:,self.width_from:self.width_to])
-		return self.image_for_CNN
+		return (self.image_for_CNN,{})
 
 	def process_img(self, image):
 		image.convert(carla.ColorConverter.CityScapesPalette)

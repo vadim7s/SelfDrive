@@ -1,0 +1,27 @@
+installs for Carla 0.9.15
+
+miniconda
+virtual env python 3.7
+conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+python -m pip install "tensorflow<2.11"
+
+carla
+gym
+standard_basilines3
+matplotlib
+pygame
+
+directX runtime from MS website
+
+New Env py39
+conda new env: conda create --name py39 python=3.9
+pip install stable-baselines3[extra] (NO NEED to install gym as gymnasium comes with BS3)
+pip install carla==0.9.15
+conda install jupyter
+<check: from stable_baselines3 import PPO - WORKS>
+conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+python -m pip install "tensorflow<2.11"
+<check: from stable_baselines3 import PPO - WORKS>
+<check GPU seen by tensorflow - OK
+import tensorflow as tf
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))>

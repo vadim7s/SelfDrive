@@ -23,7 +23,7 @@ from stable_baselines3 import PPO #PPO
 import os
 from environment import CarEnv
 import time
-
+SEED = 123
 
 print('This is the start of training script')
 
