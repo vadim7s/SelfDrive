@@ -1,27 +1,28 @@
-installs for Carla 0.9.15
+This is what I installed on a re-built computer
+to make Carla 0.9.15 work
 
-miniconda
-virtual env python 3.7
-conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
-python -m pip install "tensorflow<2.11"
+1. Mminiconda
 
-carla
-gym
-standard_basilines3
-matplotlib
-pygame
-
-directX runtime from MS website
-
-New Env py39
+2. created New Env py39
 conda new env: conda create --name py39 python=3.9
-pip install stable-baselines3[extra] (NO NEED to install gym as gymnasium comes with BS3)
-pip install carla==0.9.15
-conda install jupyter
+
+3.pip install stable-baselines3[extra] (got version 2.4.0 NO NEED to install gym as gymnasium comes with BS3)
+
+4.pip install carla==0.9.15 - great news Carla works with python 3.9
+
+5. conda install jupyter
+
 <check: from stable_baselines3 import PPO - WORKS>
-conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
-python -m pip install "tensorflow<2.11"
+
+6. conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+Prior to this I also downloaded CUDA 11.2 and cuDNN 8.1 from NVIDIA website and pointed to those on Path env.variable, not sure if it was necessary  
+
+7. python -m pip install "tensorflow<2.11"
+
 <check: from stable_baselines3 import PPO - WORKS>
 <check GPU seen by tensorflow - OK
 import tensorflow as tf
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))>
+
+
+8. DirectX runtime from MS website

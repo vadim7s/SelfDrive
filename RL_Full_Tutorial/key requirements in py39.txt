@@ -1,0 +1,14 @@
+key elements in py39 env with python 3.9 which could run train.py in RF_Full_Tutorial
+
+carla==0.9.15
+gymnasium==0.29.1
+keras==2.10.0
+matplotlib==3.9.4
+numpy==1.26.4
+opencv-python==4.10.0.84
+pygame==2.6.1
+stable_baselines3==2.4.0
+tensorflow==2.10.1
+torch==2.5.1
+
+However this was non-GPU torch

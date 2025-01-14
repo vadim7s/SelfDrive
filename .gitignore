@@ -28,3 +28,4 @@ events.out*
 cache/*
 *.xodr
 *.osm
+*.pth
