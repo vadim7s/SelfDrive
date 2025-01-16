@@ -1,9 +1,9 @@
 
 '''
-next step - tracking delays
-Step 1 - inherit world and run without changing it - done
-Step 2 - add time at one position to the world so we could track it - done
-Step 3 - present time at one position to the HUD
+moving tracking time at same location to HUD object
+here we remove any changes to World class and make all changes in HUD
+
+Achieved: secods at same location are now shown on the HUD
 
 best to run with these options in autopilit and synchronous mode:
 -a --sync 
@@ -70,103 +70,42 @@ def get_actor_blueprints(world, filter, generation):
         print("   Warning! Actor Generation is not valid. No actor will be spawned.")
         return []
 
-class My_world(mc.World):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-    # Modify the behavior of the method here
-        self.player_last_location = None
-        self.player_time_at_last_Location = None
-
-    def tick(self, clock):
-            self.hud.tick(self, clock)
-            current_loc = self.player.get_transform()
-            if self.player_last_location == None:
-                self.player_last_location = current_loc
-            # check for proximity to last location
-            if abs(current_loc.location.x - self.player_last_location.location.x) < 0.05 and abs(current_loc.location.y - self.player_last_location.location.y)<0.05:
-                # same place
-                if self.player_time_at_last_Location == None:
-                    self.player_time_at_last_Location = 0
-                self.player_time_at_last_Location += clock.get_time()
-            else:
-                # moved - need to store last location and reset clock
-                self.player_time_at_last_Location = current_loc 
-                self.player_time_at_last_Location = 0
-    
-    def restart(self):
-        self.player_max_speed = 1.589
-        self.player_max_speed_fast = 3.713
-        # Keep same camera config if the camera manager exists.
-        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
-        cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
-        # Get a random blueprint.
-        blueprint_list = get_actor_blueprints(self.world, self._actor_filter, self._actor_generation)
-        if not blueprint_list:
-            raise ValueError("Couldn't find any blueprints with the specified filters")
-        blueprint = random.choice(blueprint_list)
-        blueprint.set_attribute('role_name', self.actor_role_name)
-        if blueprint.has_attribute('terramechanics'):
-            blueprint.set_attribute('terramechanics', 'true')
-        if blueprint.has_attribute('color'):
-            color = random.choice(blueprint.get_attribute('color').recommended_values)
-            blueprint.set_attribute('color', color)
-        if blueprint.has_attribute('driver_id'):
-            driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
-            blueprint.set_attribute('driver_id', driver_id)
-        if blueprint.has_attribute('is_invincible'):
-            blueprint.set_attribute('is_invincible', 'true')
-        # set the max speed
-        if blueprint.has_attribute('speed'):
-            self.player_max_speed = float(blueprint.get_attribute('speed').recommended_values[1])
-            self.player_max_speed_fast = float(blueprint.get_attribute('speed').recommended_values[2])
-
-        # Spawn the player.
-        if self.player is not None:
-            spawn_point = self.player.get_transform()
-            spawn_point.location.z += 2.0
-            spawn_point.rotation.roll = 0.0
-            spawn_point.rotation.pitch = 0.0
-            self.destroy()
-            self.player = self.world.try_spawn_actor(blueprint, spawn_point)
-            self.show_vehicle_telemetry = False
-            self.modify_vehicle_physics(self.player)
-        while self.player is None:
-            if not self.map.get_spawn_points():
-                print('There are no spawn points available in your map/town.')
-                print('Please add some Vehicle Spawn Point to your UE4 scene.')
-                sys.exit(1)
-            spawn_points = self.map.get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
-            self.player = self.world.try_spawn_actor(blueprint, spawn_point)
-            self.show_vehicle_telemetry = False
-            self.modify_vehicle_physics(self.player)
-        # Set up the sensors.
-        self.collision_sensor = mc.CollisionSensor(self.player, self.hud)
-        self.lane_invasion_sensor = mc.LaneInvasionSensor(self.player, self.hud)
-        self.gnss_sensor = mc.GnssSensor(self.player)
-        self.imu_sensor = mc.IMUSensor(self.player)
-        self.camera_manager = mc.CameraManager(self.player, self.hud, self._gamma)
-        self.camera_manager.transform_index = cam_pos_index
-        self.camera_manager.set_sensor(cam_index, notify=False)
-        actor_type = mc.get_actor_display_name(self.player)
-        self.hud.notification(actor_type)
-        self.player_last_location = self.player.get_transform() #spawn_point
-        if self.sync:
-            self.world.tick()
-        else:
-            self.world.wait_for_tick()                        
 
 class My_Hud(mc.HUD):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
- 
+        
+        # Modify the behavior of the method here
+        #there attributes are for tracking time at same position
+        self.player_last_location = None
+        self.player_time_at_last_location = None
+        self.last_tick_time = None
+
     def tick(self, world, clock):
         self._notifications.tick(world, clock)
         if not self._show_info:
             return
-        t = world.player.get_transform()
+        t = world.player.get_transform() # where t now has current location
         v = world.player.get_velocity()
         c = world.player.get_control()
+
+        # new logic to track time at same location to detect "getting stuck"
+        if self.player_last_location == None:
+                self.player_last_location = t
+            # check for proximity to last location
+        if abs(t.location.x - self.player_last_location.location.x) < 0.05 and abs(t.location.y - self.player_last_location.location.y)<0.05:
+            # same place
+            if self.player_time_at_last_location == None:
+                self.player_time_at_last_location = 0
+                self.last_tick_time = self.simulation_time
+            self.player_time_at_last_location += abs(self.simulation_time - self.last_tick_time)
+            
+        else:
+            # moved - need to store last location and reset clock
+            self.player_last_location = t 
+            self.player_time_at_last_location = 0
+        self.last_tick_time = self.simulation_time
+
         compass = world.imu_sensor.compass
         heading = 'N' if compass > 270.5 or compass < 89.5 else ''
         heading += 'S' if 90.5 < compass < 269.5 else ''
@@ -183,7 +122,7 @@ class My_Hud(mc.HUD):
             '',
             'Vehicle: % 20s' % get_actor_display_name(world.player, truncate=20),
             'Map:     % 20s' % world.map.name.split('/')[-1],
-            'Time as one loc:     % 15.0f' % world.player_time_at_last_Location,
+            'Time as one loc:     % 5.0f' % self.player_time_at_last_location,
             'Simulation time: % 12s' % datetime.timedelta(seconds=int(self.simulation_time)),
             '',
             'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)),
@@ -443,7 +382,7 @@ def game_loop(args):
         pygame.display.flip()
 
         hud = My_Hud(args.width, args.height)
-        world = My_world(sim_world, hud, args)
+        world = mc.World(sim_world, hud, args)
         controller = mc.KeyboardControl(world, args.autopilot)
 
         if args.sync:
