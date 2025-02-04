@@ -15,10 +15,10 @@ PIXELS_FROM_CENTRE_SIDEWISE = 10 #number of pixels to take to the sides off the 
 CROP_MAP_PIXELS_Y = 264
 CROP_MAP_PIXELS_X = 240
 
-PATH_MAP = 'C:/SelfDrive/2025 Map from vision/map_img/'
-PATH_IMG = 'C:/SelfDrive/2025 Map from vision/img/'
-PATH_MAP_CLEAN = 'C:/SelfDrive/2025 Map from vision/map_clean/'
-PATH_MAP_CLEAN_SCALE = 'C:/SelfDrive/2025 Map from vision/debug/'
+PATH_MAP = 'C:\\SelfDrive\\2025 Map from vision\\map_img\\'
+PATH_IMG = 'C:\\SelfDrive\\2025 Map from vision\\img/'
+PATH_MAP_CLEAN = 'C:\\SelfDrive\\2025 Map from vision\\map_clean\\'
+PATH_MAP_CLEAN_SCALE = 'C:\\SelfDrive\\2025 Map from vision\\debug\\'
 
 # read lists of maps and images
 images = [f for f in os.listdir(PATH_IMG) if f.endswith(".png")]
@@ -48,10 +48,13 @@ print('... deleted:',len(map_extra),' extra maps and ',len(img_extra),' images.'
 
 # loop through maps to get a range of possible tip location 
 maps = [f for f in os.listdir(PATH_MAP) if f.endswith(".png")]
+print('found',len(maps),'maps')
 tip_min = 1000
 tip_max = 0
 for m in maps:
+    print('resulting folder:',PATH_MAP+m)
     sample_map = cv2.imread(PATH_MAP+m,cv2.IMREAD_COLOR)
+    print('shape of initial map image:',sample_map.shape)
     # get a section of image with the car's outline
     slice_map = sample_map
     #finding green colour in image
@@ -59,12 +62,15 @@ for m in maps:
     lower_range = (40, 40, 40) # lower range of green
     upper_range = (70, 255, 255) # upper range of green
     mask = cv2.inRange(hsv_img, lower_range, upper_range)
-
+    print('shape of mask:',mask.shape)
+ 
     region_to_look_y = slice_map.shape[0]-PIXELS_FROM_MAP_BOTTOM
     region_to_look_x1 = int(slice_map.shape[1]/2-PIXELS_FROM_CENTRE_SIDEWISE)
     region_to_look_x2 = int(slice_map.shape[1]/2+PIXELS_FROM_CENTRE_SIDEWISE)
 
     crop = mask[region_to_look_y:, region_to_look_x1:region_to_look_x2]
+    print('shape of crop:',crop.shape)
+ 
     point_loc = 0
     for i in range(crop.shape[0]):
         if crop[i,].sum() > 0 and point_loc==0:
@@ -76,7 +82,9 @@ for m in maps:
         tip_max = row_of_arrow
     crop_x = int(slice_map.shape[1]/2-CROP_MAP_PIXELS_X/2)
     crop_y = row_of_arrow + 20 - CROP_MAP_PIXELS_Y
+    print('crop_x: ', crop_x, '  crop_y: ', crop_y)
     final_crop = sample_map[crop_y:crop_y+CROP_MAP_PIXELS_Y,crop_x:crop_x+CROP_MAP_PIXELS_X]
+    print('size of final crop:',final_crop.shape)
     cv2.imwrite(PATH_MAP_CLEAN+m, final_crop)
     cv2.imwrite(PATH_MAP_CLEAN_SCALE+m,cv2.resize(final_crop, (640, 480)))
     
