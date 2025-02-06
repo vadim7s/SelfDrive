@@ -8,8 +8,11 @@ spawn a hero - done - always first car in the list
 point spectator to it - done
 attach sensors - done (may need to remove 4th dim)
 create map capture - done
+min distance for image cuts
 getting stuck workaround
 arrange image saving and count
+
+issues: some c++ error when switching to new town
 
 '''
 
@@ -49,7 +52,8 @@ CAM_H = '480'
 NO_RENDERING = True
 
 MAP_FOLDER = 'C://SelfDrive//2025 Map from vision//map_img//'
-IMAGE_FOLDER = 'C://SelfDrive//2025 Map from vision//img//'
+IMG_FOLDER = 'C://SelfDrive//2025 Map from vision//img//'
+SEM_FOLDER = 'C://SelfDrive//2025 Map from vision//sem_img//'
 
 MAP_CAPTURE_CROP_FACTOR = 1.5 # by what factor we crop height and width of a map to save an image of it  
 
@@ -62,6 +66,8 @@ CROP_MAP_PIXELS_X = 240
 
 MIN_MOVE_BETWEEN_IMAGES = 2 #meters required to move before taking next image
 
+IMAGES_PER_MAP = 50_000 # how many pairs expected per map
+WEATHER_CHANGE_IMG_FREQUENCY = 500 #this must be less than above
 
 # Colors
 
@@ -146,7 +152,6 @@ def adjust_spectator():
     spectator_pos = carla.Transform(vehicle_transform.location + carla.Location(x=-x,y=-y,z=5 ),
                                             carla.Rotation( yaw = vehicle_transform.rotation.yaw,pitch = -25))
     spectator.set_transform(spectator_pos)  
- 
 
 def get_actor_blueprints(world, filter, generation):
     bps = world.get_blueprint_library().filter(filter)
@@ -177,6 +182,34 @@ def find_weather_presets():
     name = lambda x: ' '.join(m.group(0) for m in rgx.finditer(x))
     presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
     return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
+
+def synchronize_folders(folder1, folder2):
+    """
+    Synchronizes two folders by deleting extra files in either of them.
+    Files that exist in one folder but not in the other will be removed.
+    used to remove extra images of maps so we have only matching pairs 
+    left for training a model
+    """
+    # Get sets of filenames in both folders
+    files1 = set(os.listdir(folder1))
+    files2 = set(os.listdir(folder2))
+
+    # Identify extra files in each folder
+    extra_in_folder1 = files1 - files2
+    extra_in_folder2 = files2 - files1
+
+    # Delete extra files in folder1
+    for file in extra_in_folder1:
+        file_path = os.path.join(folder1, file)
+        os.remove(file_path)
+        #print(f"Deleted: {file_path}")
+
+    # Delete extra files in folder2
+    for file in extra_in_folder2:
+        file_path = os.path.join(folder2, file)
+        os.remove(file_path)
+        #print(f"Deleted: {file_path}")
+    print("Synchronization complete.")
 
 class TrafficLightSurfaces(object):
     """Holds the surfaces (scaled and rotated) for painting traffic lights"""
@@ -675,6 +708,7 @@ class World(object):
         self._weather_index = 0
         self.hero_car = None
         self.hero_transform = None
+        self.last_img_pos = None
         self.camera_data = None
         self.camera_sem = None
         self.camera_rgb = None
@@ -762,20 +796,6 @@ class World(object):
         # Scale performed
         self.map_image.scale_map(scale_factor)
 
-    # def _show_nearby_vehicles(self, vehicles):
-    #     """Shows nearby vehicles of the hero actor"""
-    #     info_text = []
-    #     if self.player is not None and len(vehicles) > 1:
-    #         location = self.hero_transform.location
-    #         vehicle_list = [x[0] for x in vehicles if x[0].id != self.player.id]
-
-    #         def distance(v): return location.distance(v.get_location())
-    #         for n, vehicle in enumerate(sorted(vehicle_list, key=distance)):
-    #             if n > 15:
-    #                 break
-    #             vehicle_type = ''
-    #             info_text.append('% 5d %s' % (vehicle.id, vehicle_type))
-        #self.hud.add_info('NEARBY VEHICLES', info_text)
     def clip_surfaces(self, clipping_rect):
         """Used to improve perfomance. Clips the surfaces in order to render only the part of the surfaces that are going to be visible"""
         self.actors_surface.set_clip(clipping_rect)
@@ -1187,19 +1207,20 @@ class World(object):
         self._weather_index %= len(self._weather_presets)
         preset = self._weather_presets[self._weather_index]
         self.world.set_weather(preset[0])
-#main code
 
+
+#main code of loop
 client = carla.Client("localhost", 2000)
 client.set_timeout(10.0)
-pygame.init()
-pygame.display.set_mode((1, 1))
+
 quit_status = False
 for town in MAPS:
         print('Loading town:',town)
         client.load_world(town)
         sim_world = client.get_world()
         original_settings = sim_world.get_settings()
-
+        pygame.init()
+        pygame.display.set_mode((1, 1))
         world = World(sim_world)
 
         spectator = sim_world.get_spectator()
@@ -1207,30 +1228,41 @@ for town in MAPS:
         world.attach_sensors()
         
         #tick loop
+        img_counter = 0
         duration = 1_000
-        for i in range(duration):
+        while img_counter<IMAGES_PER_MAP:
             sim_world.tick()
             time_grab = time.time_ns()
             #actors = sim_world.get_actors() # can use 
             world.actors_with_transforms = [(actor, actor.get_transform()) for actor in world.all_actors]
             world.hero_transform = world.hero_car.get_transform()
+            if world.last_img_pos is None:
+                world.last_img_pos = world.hero_transform
             # optional - move spectator behind a car
-            # adjust_spectator() 
-            rgb_im = world.camera_data['rgb_image']
-            sem_im = world.camera_data['sem_image']
-            map = world.map_render() # render the map
-            pygame.image.save(map, MAP_FOLDER+'%06d.png' % time_grab)
-            #im_h = cv2.hconcat([rgb_im,sem_im])
-            cv2.imshow('semantic', sem_im)
-            if cv2.waitKey(1) == ord('q'):
-                quit_status = True
-                break
-            if i % 500 ==0:
-                print('Have gone through ',i,' out of ',duration,' cycles')
-                world.next_weather(reverse=False)
+            # adjust_spectator() M
+
+            #take images if the car has moved for min distance
+            if world.hero_transform.location.distance(world.last_img_pos.location) >= MIN_MOVE_BETWEEN_IMAGES:
+                rgb_im = world.camera_data['rgb_image']
+                sem_im = world.camera_data['sem_image']
+                map = world.map_render() # render the map
+                pygame.image.save(map, MAP_FOLDER+'%06d.png' % time_grab) #save map
+                cv2.imwrite(SEM_FOLDER+'%06d.png' % time_grab, sem_im)
+                cv2.imwrite(IMG_FOLDER+'%06d.png' % time_grab, rgb_im)
+                world.last_img_pos = world.hero_transform
+                img_counter +=1
+                if img_counter % WEATHER_CHANGE_IMG_FREQUENCY == 0:
+                    print('Captured ',img_counter,' out of ',IMAGES_PER_MAP,' required. Changing weather now ...')
+                    world.next_weather(reverse=False)
 
         world.destroy_traffic(client)
+        world.camera_sem.stop()
+        world.camera_rgb.stop()
+        pygame.quit()
         sim_world.tick()
         sim_world.apply_settings(original_settings)
         if quit_status:
             break
+
+synchronize_folders(MAP_FOLDER, IMG_FOLDER)
+synchronize_folders(MAP_FOLDER, SEM_FOLDER)
