@@ -65,6 +65,7 @@ CROP_MAP_PIXELS_Y = 264
 CROP_MAP_PIXELS_X = 240
 
 MIN_MOVE_BETWEEN_IMAGES = 2 #meters required to move before taking next image
+MAX_SECONDS_NOT_MOVING = 40 # how many max delay is allowed before restarting the current map and traffic (getting stuck)
 
 IMAGES_PER_MAP = 50_000 # how many pairs expected per map
 WEATHER_CHANGE_IMG_FREQUENCY = 500 #this must be less than above
@@ -811,25 +812,25 @@ class World(object):
             world_pos = tl.get_location()
             pos = world_to_pixel(world_pos)
 
-            if self.args.show_triggers:
-                corners = Util.get_bounding_box(tl)
-                corners = [world_to_pixel(p) for p in corners]
-                pygame.draw.lines(surface, COLOR_BUTTER_1, True, corners, 2)
+            #if self.args.show_triggers:
+            corners = Util.get_bounding_box(tl)
+            corners = [world_to_pixel(p) for p in corners]
+            pygame.draw.lines(surface, COLOR_BUTTER_1, True, corners, 2)
 
-            if self.player is not None:
-                corners = Util.get_bounding_box(tl)
-                corners = [world_to_pixel(p) for p in corners]
-                tl_t = tl.get_transform()
+            #if self.player is not None:
+            corners = Util.get_bounding_box(tl)
+            corners = [world_to_pixel(p) for p in corners]
+            tl_t = tl.get_transform()
 
-                transformed_tv = tl_t.transform(tl.trigger_volume.location)
-                hero_location = self.player.get_location()
-                d = hero_location.distance(transformed_tv)
-                s = Util.length(tl.trigger_volume.extent) + Util.length(self.player.bounding_box.extent)
-                if (d <= s):
-                    # Highlight traffic light
-                    self.affected_traffic_light = tl
-                    srf = self.traffic_light_surfaces.surfaces['h']
-                    surface.blit(srf, srf.get_rect(center=pos))
+            transformed_tv = tl_t.transform(tl.trigger_volume.location)
+            hero_location = self.hero_car.get_location()
+            d = hero_location.distance(transformed_tv)
+            s = Util.length(tl.trigger_volume.extent) + Util.length(self.hero_car.bounding_box.extent)
+            if (d <= s):
+                # Highlight traffic light
+                self.affected_traffic_light = tl
+                srf = self.traffic_light_surfaces.surfaces['h']
+                surface.blit(srf, srf.get_rect(center=pos))
 
             srf = self.traffic_light_surfaces.surfaces[tl.state]
             surface.blit(srf, srf.get_rect(center=pos))
@@ -854,10 +855,10 @@ class World(object):
             limit = sl.type_id.split('.')[2]
             font_surface = font.render(limit, True, COLOR_ALUMINIUM_5)
 
-            if self.args.show_triggers:
-                corners = Util.get_bounding_box(sl)
-                corners = [world_to_pixel(p) for p in corners]
-                pygame.draw.lines(surface, COLOR_PLUM_2, True, corners, 2)
+            #if self.args.show_triggers:
+            corners = Util.get_bounding_box(sl)
+            corners = [world_to_pixel(p) for p in corners]
+            pygame.draw.lines(surface, COLOR_PLUM_2, True, corners, 2)
 
             # Blit
             if self.hero_car is not None:
@@ -909,8 +910,6 @@ class World(object):
             corners = [world_to_pixel(p) for p in corners]
             pygame.draw.lines(surface, color, False, corners, int(math.ceil(4.0 * self.map_image.scale)))
 
-
-
     def render_actors(self, surface, vehicles, traffic_lights, speed_limits, walkers):
         """Renders all the actors"""
         # Static actors
@@ -945,12 +944,6 @@ class World(object):
             traffic_lights,
             speed_limits,
             walkers)
-
-        # Render Ids
-        # self.hud.render_vehicles_ids(self.vehicle_id_surface, vehicles,
-        #                               self.map_image.world_to_pixel, self.player, self.hero_transform)
-        # Show nearby actors from hero mode
-        #self._show_nearby_vehicles(vehicles)
 
         # Blit surfaces
         surfaces = ((self.map_image.surface, (0, 0)),
@@ -1229,16 +1222,19 @@ for town in MAPS:
         
         #tick loop
         img_counter = 0
-        duration = 1_000
+        time_grab_last_img = None
         while img_counter<IMAGES_PER_MAP:
             sim_world.tick()
-            time_grab = time.time_ns()
+            time_grab = time.time_ns() # used for file names of images
+            time_grab_current = time.time()
             #actors = sim_world.get_actors() # can use 
-            world.actors_with_transforms = [(actor, actor.get_transform()) for actor in world.all_actors]
+            world.actors_with_transforms = [(actor, actor.get_transform()) for actor in sim_world.get_actors()]
             world.hero_transform = world.hero_car.get_transform()
             if world.last_img_pos is None:
                 world.last_img_pos = world.hero_transform
-            # optional - move spectator behind a car
+            if time_grab_last_img is None:
+                time_grab_last_img = time_grab_current
+            # optional - move spectator behind a car - use for debugging only and remove "no rendering" before hand
             # adjust_spectator() M
 
             #take images if the car has moved for min distance
@@ -1250,14 +1246,24 @@ for town in MAPS:
                 cv2.imwrite(SEM_FOLDER+'%06d.png' % time_grab, sem_im)
                 cv2.imwrite(IMG_FOLDER+'%06d.png' % time_grab, rgb_im)
                 world.last_img_pos = world.hero_transform
+                time_grab_last_img =  time.time()
                 img_counter +=1
                 if img_counter % WEATHER_CHANGE_IMG_FREQUENCY == 0:
                     print('Captured ',img_counter,' out of ',IMAGES_PER_MAP,' required. Changing weather now ...')
                     world.next_weather(reverse=False)
-
-        world.destroy_traffic(client)
+            # check for "being stuck"
+            if (time_grab_current - time_grab_last_img) > MAX_SECONDS_NOT_MOVING:
+                world.camera_sem.stop()
+                world.camera_rgb.stop()
+                world.destroy_traffic(client)
+                print('detected being stuck, re-starting traffic in current location to continue..')
+                time.sleep(5)
+                world.generate_traffic(client,number_of_vehicles=20,number_of_walkers=30)
+                world.attach_sensors()
+                        
         world.camera_sem.stop()
         world.camera_rgb.stop()
+        world.destroy_traffic(client)
         pygame.quit()
         sim_world.tick()
         sim_world.apply_settings(original_settings)
