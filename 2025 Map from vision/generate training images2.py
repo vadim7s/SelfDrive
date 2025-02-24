@@ -8,11 +8,11 @@ spawn a hero - done - always first car in the list
 point spectator to it - done
 attach sensors - done (may need to remove 4th dim)
 create map capture - done
-min distance for image cuts
-getting stuck workaround
-arrange image saving and count
+min distance for image cuts - done
+getting stuck workaround - done
+arrange image saving and count - done
 
-issues: some c++ error when switching to new town
+issues: some c++ error when switching to new town, workaround - run 1 town at a time
 
 '''
 
@@ -40,7 +40,7 @@ except IndexError:
 import carla
 from carla import TrafficLightState as tls
 
-MAPS = ["Town01", "Town02", "Town03", "Town04", "Town05", "Town10HD"]
+MAPS = ["Town10HD"] #, "Town04", "Town05", "Town10HD"]
 DISTANCE_SPECTATOR = 5
 #camera mount offset on the car to mimic Tesla Model3
 CAMERA_POS_Z = 1.3 
@@ -67,8 +67,11 @@ CROP_MAP_PIXELS_X = 240
 MIN_MOVE_BETWEEN_IMAGES = 2 #meters required to move before taking next image
 MAX_SECONDS_NOT_MOVING = 40 # how many max delay is allowed before restarting the current map and traffic (getting stuck)
 
-IMAGES_PER_MAP = 50_000 # how many pairs expected per map
+IMAGES_PER_MAP = 20_000 # how many pairs expected per map
 WEATHER_CHANGE_IMG_FREQUENCY = 500 #this must be less than above
+
+CAR_COUNT = 50
+WALKER_COUNT = 50
 
 # Colors
 
@@ -1217,7 +1220,7 @@ for town in MAPS:
         world = World(sim_world)
 
         spectator = sim_world.get_spectator()
-        world.generate_traffic(client,number_of_vehicles=20,number_of_walkers=30)
+        world.generate_traffic(client,number_of_vehicles=CAR_COUNT,number_of_walkers=WALKER_COUNT)
         world.attach_sensors()
         
         #tick loop
@@ -1258,7 +1261,7 @@ for town in MAPS:
                 world.destroy_traffic(client)
                 print('detected being stuck, re-starting traffic in current location to continue..')
                 time.sleep(5)
-                world.generate_traffic(client,number_of_vehicles=20,number_of_walkers=30)
+                world.generate_traffic(client,number_of_vehicles=CAR_COUNT,number_of_walkers=WALKER_COUNT)
                 world.attach_sensors()
                         
         world.camera_sem.stop()
