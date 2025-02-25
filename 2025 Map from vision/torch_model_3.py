@@ -3,6 +3,9 @@ continue from torch_model2.py
 
 try RGB to semantic, but in pytorch this time
 
+Result: just 1 epoch over 200k images achieved great results when testing trained model
+on a real Tesla footage 
+
 '''
 import os
 import numpy as np
