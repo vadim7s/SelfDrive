@@ -24,3 +24,16 @@ then i decided to create separate python code with robust functions for:
 3. hero spawning with cameras 
 
 so I could use ChatGPT structure to loop thrugh all maps
+
+Outcome of map prediction was quite poor, however image generation in "generate training images2.py" is pretty good
+
+It creates fron view RGB, front view semantic and Top down map, while having traffic and changing weather and time of day
+
+A compromise there - you need to run it for one map at a time and re-run it a few times in that town as it slows down after few traffic re-starts
+
+Next I wanted to train semantic segmentation model in Pytorch - "torch_model_3.py". 
+Previously I trained a similar model in tensorflow and result was quite poor.
+
+The result was quite good even after just 1 epoch on 200k image pairs
+
+I tested the quality on a real Tesla footage - it was pretty good 
