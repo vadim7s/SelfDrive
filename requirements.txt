@@ -1,0 +1,17 @@
+# Exact versions we run with (Python 3.12). Install the CUDA build of torch/torchvision FIRST, e.g.
+#   pip install torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu130
+# then: pip install -r requirements.txt     and check everything with: cd src && python doctor.py
+carla==0.9.16
+torch==2.14.1
+torchvision==0.29.1
+numpy==2.5.4
+opencv-python==5.0.0.93
+stable-baselines3==2.9.2
+gymnasium==1.4.0
+transformers==5.23.0
+safetensors==0.8.0
+pillow==13.0.0
+scipy==1.18.1
+shapely==2.2.0
+pandas==3.1.1
+tensorboard==2.21.0
